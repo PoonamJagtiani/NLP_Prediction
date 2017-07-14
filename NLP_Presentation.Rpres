@@ -1,0 +1,56 @@
+Data Science Capstone Project - Swiftkey
+========================================================
+author: Poonam Jagtiani 
+date: 14th July 2017
+autosize: true
+
+Project at Coursera for Data Science Specialization
+
+First Slide
+========================================================
+
+
+The project is part of Data Science Specialization. It is a opportunity for us to display our work and prove our understanding.
+The goal is to create a shiny application that predicts text based in a sentence inputtted by the user. 
+User can input a word or two or three or four or a complete sentence. The program will predict the next word.
+
+For this analysis and exploration of data is necessary. I have applied the concepts of Natural Language Processing and text mining.
+
+The application is available at shiny : https://pjagtiani123.shinyapps.io/NLP_Prediction/
+
+
+Algorithm
+========================================================
+
+The data provided is from the news, blogs and twitter as provided by Swiftkey.
+It was necesary to analyze and explore the data to be able to build a algorithm.
+
+ *  Convert all text into lower text
+ *  Remove unnecessary characters, numbers, punctuation, white spaces
+ *  Develop n-grams (unigram, bigram, trigram and quadgram)
+ *  Use the Backoff algorithm predict function from the ANLP package to search for the next word.
+ *  Test the algorithm by providing text input at the R prompt.
+ *  Develop a shiny application so that there is a web interface and users can access it easily.
+
+Back-off Algorithm
+========================================================
+ *  The algorithm self detects the number of words user has entered
+ *  We have restricted the project to develop till quadgrams.
+ *  If the user has entered three or more words then only the last three will be considered. The app will search through the 4 gram table.
+    to find a match. If a match is found the last word is returned as the predicted word. If more then one matches are found then app will return
+    the word with the highest frequency. Five frequency counts are generated inside the algorithm.
+ *  If five frequency counts do not get generated due to less matches, then the algorithm will search in the 3-gram table to find a match for the last two       words entered by the user and so on..
+ *  If user enters three words then also last two words are considered and start the matching from 3-gram table and above process is repeated.
+ *  If user enters two words then also last one word is considered and start matching from the unigram table and above process is repeated.
+ *  If no match is found, the algorithm will return the last word itself instead of throwing an error. 
+
+Conclusion
+========================================================
+ *  The application is fast and returns the next word very quick.
+ *  Currently the app does not learn from user input. Future improvement could include building n-gram table based upon user's frequent input.
+ *  Also, the app could make more accurate prediction by determining parts of speech, but this ould impact the speed.
+ *  The application does not show top 5 most frequent matched words. For future we can include those words as well.
+ 
+ 
+ 
+ ![wordcloud](wordcloud.png)

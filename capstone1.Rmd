@@ -1,0 +1,130 @@
+---
+title: "Capstone-1"
+author: "Poonam Jagtiani"
+date: "11 July 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+##Text Prediction Using n-gram Models: Milestone Report
+##Introduction
+
+This document summarizes the exploratory analysis performed on a corpus of documents. The objective of the proyect is to develop and implement a text prediction algorithm. The idea is to provide the user with predictions for the next words to be typed in, based on the last words typed by the user.
+
+. Data comes from a corpus called Swiftkey. The corpora includes documents crawled from public sites such as twitter, blogs, and news entries.
+
+. R packages used in this project are tm and slam. tm is a suite of text mining functions. For a quick overview of the functions included in the tm package, visit this link. In this proyect we use the function to convert a vector of documents into a corpus and then we use the function to convert that corpus into a document term matrix (DTM). This latter has the option to tokenize using custom functions. After te DTM is constructed, the slam package is used to sum over the columns of that sparce matrix and create a vector of n-grams and their frecuencies in all the documents.
+
+. Preprocessing: only profanities and punctuation are removed. Stopwords are left in order to also predict their use. However, this might generate noise to the performance and therefore, during the next stage of the proyect, an alternative would be to explore models without stopwords.
+
+## Loading the twitter file
+
+
+```{r}
+
+twitter <- readLines(con <- file("~/final/en_US/en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
+news <-  readLines(con <- file("~/final/en_US/en_US.news.txt"), encoding = "UTF-8", skipNul = TRUE)
+blogs <- readLines(con <- file("~/final/en_US/en_US.blogs.txt"), encoding = "UTF-8", skipNul = TRUE)
+```
+
+## Data Cleaning
+```{r}
+# Remove all wierd characters
+cleanedTwitter<- iconv(twitter, 'UTF-8', 'ASCII', "byte")
+cleanednews<- iconv(news, 'UTF-8', 'ASCII', "byte")
+cleanedblog<- iconv(blogs, 'UTF-8', 'ASCII', "byte")
+
+#Sample 10000 
+library(tm)
+
+twitterSample<-sample(cleanedTwitter, 10000)
+newssample<-sample(cleanednews,10000)
+blogsample <- sample(cleanedblog,10000)
+
+all.doc.sample <- c(twitterSample, newssample, blogsample)
+doc.vec <- VectorSource(all.doc.sample)                      
+doc.corpus <- Corpus(doc.vec)
+#Convert to lower case
+doc.corpus<- tm_map(doc.corpus, tolower)
+#Remove all punctuatins
+doc.corpus<- tm_map(doc.corpus, removePunctuation)
+#Remove all numbers 
+doc.corpus<- tm_map(doc.corpus, removeNumbers)
+##Remove whitespace
+doc.corpus <- tm_map(doc.corpus, stripWhitespace)
+```
+
+## Exploratory Analysis
+```{r}
+#Visualize using wordcloud
+library(wordcloud)
+wordcloud(doc.corpus, max.words = 200, random.order = FALSE,rot.per=0.35, use.r.layout=FALSE,colors=brewer.pal(8, "Dark2"))
+```
+
+## Document Term Matrix (n-grams) generation
+```{r}
+library(slam)
+tdm_twitter <- TermDocumentMatrix(doc.corpus)
+sums <- colapply_simple_triplet_matrix(tdm_twitter,FUN=sum)
+sums <- sort(sums, decreasing=T)
+```
+
+## In this case, we create three different tokenizer functions in order to construct the DTM for 2-grams, 3-grams, and 4-grams.
+```{r}
+BigramTokenizer <- function(x) {RWeka::NGramTokenizer(x, RWeka::Weka_control(min=2, max=2))}
+ThreegramTokenizer <- function(x) {RWeka::NGramTokenizer(x, RWeka::Weka_control(min=3, max=3))}
+FourgramTokenizer <- function(x) {RWeka::NGramTokenizer(x, RWeka::Weka_control(min=4, max=4))}
+
+# Bigrams
+options(mc.cores=1)
+dtm.docs.2g <- TermDocumentMatrix(doc.corpus, control=list(tokenize=BigramTokenizer))
+
+
+#Threegrams
+options(mc.cores=1)
+dtm.docs.3g <- TermDocumentMatrix(doc.corpus, control=list(tokenize=ThreegramTokenizer))
+
+#Fourgrams
+options(mc.cores=1)
+dtm.docs.4g <- TermDocumentMatrix(doc.corpus, control=list(tokenize=FourgramTokenizer))
+
+```
+
+##Using these DTM's we now proceed to convert those into frecuency vectors. Notice that we sort the resulting vectors in descending order. That way, the top n-grams end up being the most common.
+
+```{r}
+# To get the Bigram dist, we use the slam package for ops with simple triple mat
+sums.2g <- colapply_simple_triplet_matrix(dtm.docs.2g,FUN=sum)
+sums.2g <- sort(sums.2g, decreasing=T)
+
+# To get the threegram dist, we use the slam package for ops with simple triplet mat
+sums.3g <- colapply_simple_triplet_matrix(dtm.docs.3g,FUN=sum)
+sums.3g <- sort(sums.3g, decreasing=T)
+# To get the fourgram dist, we use the slam package for ops with simple triplet mat
+sums.4g <- colapply_simple_triplet_matrix(dtm.docs.4g,FUN=sum)
+sums.4g <- sort(sums.4g, decreasing=T)
+```
+
+##Let's now plot histograms for each n-gram distribution.
+```{r}
+plot(barplot(sums[1:50],las=3))
+plot(barplot(sums.2g[1:50],las=3))
+plot(barplot(sums.3g[1:50],las=3))
+plot(barplot(sums.4g[1:50],las=3))
+```
+
+##n-gram Model and Prediction
+
+Based on this exploratory analysis, I now sketch a basic algorithm for text prediction using n-gram tables.
+
+1. 1, 2, 3 and 4 n-gram tables are stored as text files.
+2. Only n-grams that have fequency higher or equal to 2 are kept in the model.
+3. The n-gram tables are loaded from the text files.
+4. For a string of text that is input into the predictor the prediction algorithm performs a search on each n-gram table, starting with the 4-gram table.
+5. From the imput text, the last three terms are obtained and searched in the 4-gram table. If one or more matches are found, then the algorithm outputs the    best predictions for the next word given those three terms.
+6. If no match is found in the 4-gram table, then the search continues in the 3-gram table using the last two words from the input. And so on. If no match is    found, the prediction is then the most common one-gram (single terms).
+
